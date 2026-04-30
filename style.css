@@ -1,0 +1,5 @@
+body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
+#auth-section, #dashboard { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+input { display: block; width: 100%; margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; }
+button { padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+.view { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }

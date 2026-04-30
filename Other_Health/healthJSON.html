@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Health Management Platform</title>
+  <style>
+    
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #2196f3;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 20px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background: #2196f3;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1976d2;
+    }
+    .hidden {
+      display: none;
+    }
+    .user-list, .appointment-list {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    .user-list th, .user-list td, .appointment-list th, .appointment-list td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    .user-list th, .appointment-list th {
+      background-color: #2196f3;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h3>Max's MyHealth</h3>
+    <button id="logoutBtn" class="hidden">Logout</button>
+  </header>
+
+  <div class="container" id="loginPage">
+    <h2>Login</h2>
+    <input type="text" id="loginUsername" placeholder="Username" />
+    <input type="password" id="loginPassword" placeholder="Password" />
+    <button id="loginBtn">Login</button>
+    <hr>
+    <h3>New User? Sign Up</h3>
+    <input type="text" id="signupUsername" placeholder="Username" />
+    <input type="password" id="signupPassword" placeholder="Password" />
+    <button id="signupBtn">Sign Up</button>
+  </div>
+
+  <div class="container hidden" id="userPage">
+    <h2>User Dashboard</h2>
+    <h3>Demographic Information</h3>
+    <input type="number" id="age" placeholder="Age" />
+    <select id="gender">
+      <option value="">Select Gender</option>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+    </select>
+    <input type="number" id="height" placeholder="Height (cm)" />
+    <input type="number" id="weight" placeholder="Weight (kg)" />
+    <textarea id="remarks" placeholder="Remarks"></textarea>
+    <button id="saveInfoBtn">Save Info</button>
+    <p id="bmiResult"></p>
+
+    <h3>Appointments</h3>
+    <input type="date" id="apptDate" />
+    <input type="time" id="apptTime" />
+    <textarea id="apptDesc" placeholder="Appointment Description"></textarea>
+    <button id="addApptBtn">Add Appointment</button>
+
+    <h3>Your Appointments</h3>
+    <table class="appointment-list" id="userApptTable">
+      <thead>
+        <tr><th>Date</th><th>Time</th><th>Description</th><th>Status</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button id="exportUserData">Export My Data (JSON)</button>
+    <input type="file" id="importUserData" accept="application/json" />
+  </div>
+
+  <div class="container hidden" id="staffPage">
+    <h2>Staff Dashboard</h2>
+    <h3>All Users</h3>
+    <table class="user-list" id="userListTable">
+      <thead>
+        <tr><th>Username</th><th>Action</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div id="staffUserDetail" class="hidden">
+      <h3>User Info</h3>
+      <p id="staffUserInfo"></p>
+      <h3>User Appointments</h3>
+      <table class="appointment-list" id="staffUserApptTable">
+        <thead>
+          <tr><th>Date</th><th>Time</th><th>Description</th><th>Status</th><th>Update</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <hr>
+    <button id="exportAllData">Export All Data (JSON)</button>
+    <input type="file" id="importAllData" accept="application/json" />
+  </div>
+
+  <script>
+    const loginPage = document.getElementById('loginPage');
+    const userPage = document.getElementById('userPage');
+    const staffPage = document.getElementById('staffPage');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    let currentUser = null;
+
+    function getData() {
+      return JSON.parse(localStorage.getItem('healthData')) || { users: [], appointments: [] };
+    }
+
+    function saveData(data) {
+      localStorage.setItem('healthData', JSON.stringify(data));
+    }
+
+    document.getElementById('signupBtn').onclick = () => {
+      const username = document.getElementById('signupUsername').value.trim();
+      const password = document.getElementById('signupPassword').value.trim();
+      if (!username || !password) return alert('Fill all fields');
+      const data = getData();
+      if (data.users.find(u => u.username === username)) return alert('Username exists');
+      data.users.push({ username, password, role: 'User', info: {}, appointments: [] });
+      saveData(data);
+      alert('Signup successful!');
+    };
+
+    document.getElementById('loginBtn').onclick = () => {
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+      if (username === 'staff' && password === 'staff123') {
+        currentUser = { username: 'staff', role: 'Staff' };
+        showPage('staff');
+        renderStaff();
+        return;
+      }
+      const data = getData();
+      const user = data.users.find(u => u.username === username && u.password === password);
+      if (!user) return alert('Invalid login');
+      currentUser = user;
+      showPage('user');
+      loadUserInfo();
+      renderUserAppts();
+    };
+
+    function showPage(role) {
+      loginPage.classList.add('hidden');
+      userPage.classList.add('hidden');
+      staffPage.classList.add('hidden');
+      logoutBtn.classList.remove('hidden');
+      if (role === 'user') userPage.classList.remove('hidden');
+      if (role === 'staff') staffPage.classList.remove('hidden');
+    }
+
+    logoutBtn.onclick = () => {
+      currentUser = null;
+      logoutBtn.classList.add('hidden');
+      loginPage.classList.remove('hidden');
+      userPage.classList.add('hidden');
+      staffPage.classList.add('hidden');
+    };
+
+    document.getElementById('saveInfoBtn').onclick = () => {
+      const age = document.getElementById('age').value;
+      const gender = document.getElementById('gender').value;
+      const height = parseFloat(document.getElementById('height').value);
+      const weight = parseFloat(document.getElementById('weight').value);
+      const remarks = document.getElementById('remarks').value;
+      const bmi = (weight / ((height/100)**2)).toFixed(2);
+      let category = '';
+      if (bmi < 18.5) category = 'Underweight';
+      else if (bmi < 24.9) category = 'Healthy';
+      else if (bmi < 29.9) category = 'Overweight';
+      else category = 'Obesity';
+      document.getElementById('bmiResult').innerText = `BMI: ${bmi} (${category})`;
+      const data = getData();
+      const user = data.users.find(u => u.username === currentUser.username);
+      user.info = { age, gender, height, weight, remarks, bmi, category };
+      saveData(data);
+    };
+
+    document.getElementById('addApptBtn').onclick = () => {
+      const date = document.getElementById('apptDate').value;
+      const time = document.getElementById('apptTime').value;
+      const desc = document.getElementById('apptDesc').value;
+      if (!date || !time || !desc) return alert('Fill all appointment fields');
+      const data = getData();
+      const user = data.users.find(u => u.username === currentUser.username);
+      user.appointments.push({ date, time, desc, status: 'Pending' });
+      saveData(data);
+      renderUserAppts();
+    };
+
+    function loadUserInfo() {
+      const data = getData();
+      const user = data.users.find(u => u.username === currentUser.username);
+      if (!user.info) return;
+      document.getElementById('age').value = user.info.age || '';
+      document.getElementById('gender').value = user.info.gender || '';
+      document.getElementById('height').value = user.info.height || '';
+      document.getElementById('weight').value = user.info.weight || '';
+      document.getElementById('remarks').value = user.info.remarks || '';
+      if (user.info.bmi)
+        document.getElementById('bmiResult').innerText = `BMI: ${user.info.bmi} (${user.info.category})`;
+    }
+
+    function renderUserAppts() {
+      const tbody = document.querySelector('#userApptTable tbody');
+      tbody.innerHTML = '';
+      const data = getData();
+      const user = data.users.find(u => u.username === currentUser.username);
+      user.appointments.forEach(a => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${a.date}</td><td>${a.time}</td><td>${a.desc}</td><td>${a.status}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderStaff() {
+      const tbody = document.querySelector('#userListTable tbody');
+      tbody.innerHTML = '';
+      const data = getData();
+      data.users.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${u.username}</td><td><button onclick="viewUser('${u.username}')">View</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    window.viewUser = function(username) {
+      const data = getData();
+      const user = data.users.find(u => u.username === username);
+      document.getElementById('staffUserDetail').classList.remove('hidden');
+      const info = user.info || {};
+      document.getElementById('staffUserInfo').innerText = `Age: ${info.age || ''}, Gender: ${info.gender || ''}, Height: ${info.height || ''}, Weight: ${info.weight || ''}, BMI: ${info.bmi || ''} (${info.category || ''})`;
+      const tbody = document.querySelector('#staffUserApptTable tbody');
+      tbody.innerHTML = '';
+      user.appointments.forEach((a, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${a.date}</td><td>${a.time}</td><td>${a.desc}</td><td>${a.status}</td><td><select onchange="updateStatus('${user.username}', ${i}, this.value)"><option ${a.status==='Pending'?'selected':''}>Pending</option><option ${a.status==='Confirmed'?'selected':''}>Confirmed</option><option ${a.status==='Cancelled'?'selected':''}>Cancelled</option><option ${a.status==='Finished'?'selected':''}>Finished</option></select></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    window.updateStatus = function(username, index, value) {
+      const data = getData();
+      const user = data.users.find(u => u.username === username);
+      user.appointments[index].status = value;
+      saveData(data);
+      viewUser(username);
+    }
+
+    document.getElementById('exportUserData').onclick = () => {
+      const data = getData();
+      const user = data.users.find(u => u.username === currentUser.username);
+      const blob = new Blob([JSON.stringify(user, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${currentUser.username}_data.json`;
+      link.click();
+    };
+
+    document.getElementById('importUserData').onchange = function(e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const importedUser = JSON.parse(event.target.result);
+        const data = getData();
+        const index = data.users.findIndex(u => u.username === importedUser.username);
+        if (index !== -1) data.users[index] = importedUser; else data.users.push(importedUser);
+        saveData(data);
+        alert('User data imported successfully!');
+        loadUserInfo();
+        renderUserAppts();
+      };
+      reader.readAsText(file);
+    };
+
+    document.getElementById('exportAllData').onclick = () => {
+      const data = getData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'all_data.json';
+      link.click();
+    };
+
+    document.getElementById('importAllData').onchange = function(e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const importedData = JSON.parse(event.target.result);
+        saveData(importedData);
+        alert('All data imported successfully!');
+        renderStaff();
+      };
+      reader.readAsText(file);
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Health Portal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="auth-section">
+        <h2>Health Management Login</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Sign In</button>
+    </div>
+
+    <div id="dashboard" style="display:none;">
+        <nav>
+            <span id="user-display"></span>
+            <button onclick="logout()">Sign Out</button>
+        </nav>
+
+        <div id="user-view" class="view">
+            <h3>My Health Dashboard</h3>
+            <button onclick="addDemographics()">Update My Info</button>
+            <button onclick="bookAppointment()">Book Appointment</button>
+            <div id="my-records"></div>
+        </div>
+
+        <div id="admin-view" class="view" style="display:none;">
+            <h3>Admin Panel</h3>
+            <div id="admin-data-list">
+                </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

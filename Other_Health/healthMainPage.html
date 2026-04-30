@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Max's MyHealth App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #a8edea, #fed6e3);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 95%;
+      max-width: 1000px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      margin: 40px auto;
+      padding: 30px;
+    }
+
+    h1, h2, h3 {
+      color: #444;
+      text-align: center;
+    }
+
+    input, select, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-family: 'Poppins', sans-serif;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background: linear-gradient(90deg, #a1c4fd, #c2e9fb);
+      border: none;
+      cursor: pointer;
+      transition: 0.3s;
+      font-weight: 600;
+      color: #333;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .card {
+      background: #f9f9ff;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      margin-bottom: 25px;
+    }
+
+    .appointment {
+      background: #e8f0fe;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+    }
+
+    .status-Pending { color: #f7b731; font-weight: 600; }
+    .status-Confirmed { color: #20bf6b; font-weight: 600; }
+    .status-Completed { color: #3867d6; font-weight: 600; }
+    .status-Cancelled { color: #eb3b5a; font-weight: 600; }
+
+    .admin-section {
+      background: #fdf1ff;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .user-box {
+      background: #fff7fa;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .bmi-underweight { color: #3498db; font-weight: 600; }
+    .bmi-normal { color: #27ae60; font-weight: 600; }
+    .bmi-overweight { color: #f39c12; font-weight: 600; }
+    .bmi-obese { color: #e74c3c; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌸 Max's MyHealth App</h1>
+
+    <div id="authSection" class="card">
+      <h2>Login / Signup</h2>
+      <input type="text" id="username" placeholder="Username">
+      <input type="password" id="password" placeholder="Password">
+      <button onclick="login()">Login</button>
+      <button onclick="signup()">Sign Up</button>
+    </div>
+
+    <div id="userSection" style="display:none;">
+      <div class="card">
+        <h2>Your Demographic Information</h2>
+        <input type="text" id="height" placeholder="Height (cm)">
+        <input type="text" id="weight" placeholder="Weight (kg)">
+        <select id="gender">
+          <option value="">Select Gender</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+        <textarea id="description" placeholder="Describe yourself"></textarea>
+        <button onclick="saveDemographics()">Save</button>
+        <p id="bmiResult" style="text-align:center; font-weight:600;"></p>
+      </div>
+
+      <div class="card">
+        <h2>Make Appointment</h2>
+        <input type="date" id="appDate">
+        <input type="time" id="appTime">
+        <input type="text" id="appReason" placeholder="Reason">
+        <button onclick="addAppointment()">Add Appointment</button>
+        <h3>Your Appointments</h3>
+        <div id="appointmentList"></div>
+      </div>
+
+      <button onclick="logout()">Logout</button>
+    </div>
+
+    <div id="adminSection" style="display:none;" class="admin-section">
+      <h2>Admin Panel</h2>
+      <button onclick="exportJSON()">Export All Data (JSON)</button>
+      <input type="file" id="importFile" onchange="importJSON(event)" accept="application/json">
+      <h3>Users</h3>
+      <div id="userList"></div>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <script>
+    let users = JSON.parse(localStorage.getItem('hm_users') || '{}');
+    let currentUser = localStorage.getItem('hm_currentUser');
+
+    function saveUsers() {
+      localStorage.setItem('hm_users', JSON.stringify(users));
+    }
+
+    function login() {
+      const u = username.value.trim();
+      const p = password.value.trim();
+      if (u === 'admin' && p === 'admin') {
+        currentUser = 'admin';
+        localStorage.setItem('hm_currentUser', 'admin');
+        showAdminPanel();
+      } else if (users[u] && users[u].password === p) {
+        currentUser = u;
+        localStorage.setItem('hm_currentUser', u);
+        showUserPanel();
+      } else {
+        alert('Invalid username or password');
+      }
+    }
+
+    function signup() {
+      const u = username.value.trim();
+      const p = password.value.trim();
+      if (!u || !p) return alert('Please fill all fields');
+      if (users[u]) return alert('User already exists');
+      users[u] = { password: p, demographics: {}, appointments: [] };
+      saveUsers();
+      alert('Account created! You can now login.');
+    }
+
+    function showUserPanel() {
+      authSection.style.display = 'none';
+      userSection.style.display = 'block';
+      adminSection.style.display = 'none';
+      loadDemographics();
+      loadAppointments();
+    }
+
+    function showAdminPanel() {
+      authSection.style.display = 'none';
+      userSection.style.display = 'none';
+      adminSection.style.display = 'block';
+      renderUserList();
+    }
+
+    function logout() {
+      localStorage.removeItem('hm_currentUser');
+      location.reload();
+    }
+
+    function calculateBMI(weight, height) {
+      const h = parseFloat(height) / 100;
+      if (!h || !weight) return { value: null, category: '', class: '' };
+      const bmi = (parseFloat(weight) / (h * h)).toFixed(1);
+      let category = '', css = '';
+      if (bmi < 18.5) { category = 'Underweight'; css = 'bmi-underweight'; }
+      else if (bmi < 25) { category = 'Normal'; css = 'bmi-normal'; }
+      else if (bmi < 30) { category = 'Overweight'; css = 'bmi-overweight'; }
+      else { category = 'Obese'; css = 'bmi-obese'; }
+      return { value: bmi, category, class: css };
+    }
+
+    function saveDemographics() {
+      const d = {
+        height: height.value,
+        weight: weight.value,
+        gender: gender.value,
+        description: description.value
+      };
+      const bmi = calculateBMI(d.weight, d.height);
+      d.bmi = bmi.value;
+      d.bmiCategory = bmi.category;
+      d.bmiClass = bmi.class;
+      users[currentUser].demographics = d;
+      saveUsers();
+      showBMI(bmi);
+      alert('Demographics saved! BMI calculated.');
+    }
+
+    function showBMI(bmi) {
+      if (!bmi.value) { bmiResult.textContent = ''; return; }
+      bmiResult.innerHTML = `BMI: <span class='${bmi.class}'>${bmi.value} (${bmi.category})</span>`;
+    }
+
+    function loadDemographics() {
+      const d = users[currentUser]?.demographics || {};
+      height.value = d.height || '';
+      weight.value = d.weight || '';
+      gender.value = d.gender || '';
+      description.value = d.description || '';
+      if (d.bmi) showBMI({ value: d.bmi, category: d.bmiCategory, class: d.bmiClass });
+    }
+
+    function addAppointment() {
+      const date = appDate.value, time = appTime.value, reason = appReason.value;
+      if (!date || !time || !reason) return alert('Fill all fields');
+      const appt = { date, time, reason, status: 'Pending' };
+      users[currentUser].appointments.push(appt);
+      saveUsers();
+      loadAppointments();
+    }
+
+    function loadAppointments() {
+      const list = document.getElementById('appointmentList');
+      list.innerHTML = '';
+      const appointments = users[currentUser].appointments || [];
+      appointments.forEach((a, i) => {
+        const div = document.createElement('div');
+        div.className = 'appointment';
+        div.innerHTML = `<strong>${a.date}</strong> at ${a.time}<br>${a.reason}<br>Status: <span class='status-${a.status}'>${a.status}</span><br>` +
+          (a.status === 'Cancelled' ? '' : `<button onclick='cancelAppointment(${i})'>Cancel</button>`);
+        list.appendChild(div);
+      });
+    }
+
+    function cancelAppointment(index) {
+      users[currentUser].appointments[index].status = 'Cancelled';
+      saveUsers();
+      loadAppointments();
+    }
+
+    function renderUserList() {
+      const list = document.getElementById('userList');
+      list.innerHTML = '';
+      Object.keys(users).forEach(u => {
+        const div = document.createElement('div');
+        div.className = 'user-box';
+        div.innerHTML = `<strong>${u}</strong> <button onclick='showUserInfo("${u}")'>More Info</button><div id='info-${u}'></div>`;
+        list.appendChild(div);
+      });
+    }
+
+    function showUserInfo(u) {
+      const infoDiv = document.getElementById('info-' + u);
+      const data = users[u];
+      if (!data) return;
+      const d = data.demographics;
+      let bmiText = d.bmi ? `<p><strong>BMI:</strong> <span class='${d.bmiClass}'>${d.bmi} (${d.bmiCategory})</span></p>` : '';
+      let html = `<p><strong>Height:</strong> ${d.height || '-'}<br><strong>Weight:</strong> ${d.weight || '-'}<br><strong>Gender:</strong> ${d.gender || '-'}<br><strong>Description:</strong> ${d.description || '-'}</p>${bmiText}`;
+      html += '<h4>Appointments:</h4>';
+      (data.appointments || []).forEach((a, i) => {
+        html += `<div class='appointment'><strong>${a.date}</strong> ${a.time} — ${a.reason}<br>Status: <select onchange='updateStatus("${u}", ${i}, this.value)'>${['Pending','Confirmed','Completed','Cancelled'].map(s => `<option ${a.status===s?'selected':''}>${s}</option>`).join('')}</select></div>`;
+      });
+      infoDiv.innerHTML = html;
+    }
+
+    function updateStatus(u, i, val) {
+      users[u].appointments[i].status = val;
+      saveUsers();
+    }
+
+    function exportJSON() {
+      const blob = new Blob([JSON.stringify(users, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'health_data.json';
+      link.click();
+    }
+
+    function importJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          users = JSON.parse(e.target.result);
+          saveUsers();
+          alert('Data imported successfully!');
+          renderUserList();
+        } catch {
+          alert('Invalid JSON file');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    if (currentUser) {
+      if (currentUser === 'admin') showAdminPanel(); else showUserPanel();
+    }
+  </script>
+</body>
+</html>
